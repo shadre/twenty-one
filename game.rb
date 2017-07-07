@@ -8,11 +8,22 @@ class Deck
     @cards = stanard_deck_cards
   end
 
+  def deal
+    cards.shift
+  end
+
+  def shuffle
+    cards.shuffle
+  end
+
   private
+
+  attr_writer :cards
 
   def stanard_deck_cards
     RANKS.map { |rank| SUITS.map { |suit| Card.new(rank, suit) } }
          .flatten
+         .shuffle
   end
 end
 
