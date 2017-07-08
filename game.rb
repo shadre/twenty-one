@@ -173,6 +173,10 @@ class Partaker
     end
   end
 
+  def stay
+    self.staying = true
+  end
+
   def to_s
     name
   end
@@ -206,6 +210,8 @@ class Partaker
 end
 
 class Dealer < Partaker
+  HITTING_THRESHOLD = 17
+
   def initial_draw(game)
     game.hit(hand)
   end
@@ -216,10 +222,15 @@ class Dealer < Partaker
     "Dealer"
   end
 
-  def make_decision(game) # temporary implementation
+  def limit_reached?
+    total >= HITTING_THRESHOLD
+  end
+
+  def make_decision(game)
     game.hit(hand)
-    game.hit(hand)
-    self.staying = true
+
+    game.hit(hand) until limit_reached?
+    stay
   end
 end
 
@@ -236,6 +247,6 @@ class Player < Partaker
 
   def make_decision(game) # temporary implementation
     game.hit(hand)
-    self.staying = true
+    stay
   end
 end
