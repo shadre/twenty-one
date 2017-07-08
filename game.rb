@@ -12,8 +12,8 @@ class Deck
     cards.shift
   end
 
-  def shuffle
-    cards.shuffle
+  def shuffle!
+    cards.shuffle!
   end
 
   private
@@ -21,9 +21,8 @@ class Deck
   attr_writer :cards
 
   def stanard_deck_cards
-    RANKS.map { |rank| SUITS.map { |suit| Card.new(rank, suit) } }
-         .flatten
-         .shuffle
+    RANKS.product(SUITS)
+         .map { |card| Card.new(*card) }
   end
 end
 
@@ -118,6 +117,7 @@ class Game
   end
 
   def initial_deal
+    deck.shuffle!
     players.each { |player| player.initial_draw(self) }
   end
 
