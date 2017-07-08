@@ -106,10 +106,10 @@ class Game
     @in_contention = players.dup
   end
 
-  def detect_winner
-    return self.winner = in_contention.first if last_man_standing?
-
-    self.winner = winner_by_total
+  def display_current_state
+    players.each do |player|
+      puts "#{player}: #{player.hand} (total: #{player.total})"
+    end
   end
 
   def hit(hand)
@@ -119,10 +119,6 @@ class Game
   def initial_deal
     deck.shuffle!
     players.each { |player| player.initial_draw(self) }
-  end
-
-  def last_man_standing?
-    in_contention.size == 1
   end
 
   def mark_as_busted(player)
@@ -138,6 +134,16 @@ class Game
   attr_accessor :in_contention
   attr_reader :deck, :players
   attr_writer :winner
+
+  def detect_winner
+    return self.winner = in_contention.first if last_man_standing?
+
+    self.winner = winner_by_total
+  end
+
+  def last_man_standing?
+    in_contention.size == 1
+  end
 
   def winner_by_total
     max_score    = in_contention.map(&:total).max
