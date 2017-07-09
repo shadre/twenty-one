@@ -1,7 +1,7 @@
 module UX
   PROMPT = ">> "
 
-  def clear_screen
+  def clear_terminal
     system("cls") || system("clear")
   end
 
@@ -75,7 +75,7 @@ class Deck
     cards.shift
   end
 
-  def shuffle!
+  def shuffle
     cards.shuffle!
   end
 
@@ -175,9 +175,9 @@ class Game
     @in_contention = players.dup
   end
 
-  def display_current_state
-    players.sort_by { |player| -player.display_priority }
-           .each    { |player| display_cards(player)    }
+  def display(clear_screen: true)
+    clear_terminal if clear_screen
+    players_in_display_order.each(&:display_with_cards)
   end
 
   def hit(hand)
@@ -185,7 +185,7 @@ class Game
   end
 
   def initial_deal
-    deck.shuffle!
+    deck.shuffle
     players.each { |player| player.initial_draw(self) }
   end
 
@@ -194,11 +194,7 @@ class Game
   end
 
   def play
-    players.sort_by { |player| -player.move_sequence }
-           .each do |player|
-             player.play_turn(self)
-             break if last_man_standing?
-           end
+    ask_for_playing(*players_in_move_order)
     detect_winner
     display_outcome
   end
@@ -209,26 +205,34 @@ class Game
   attr_reader :deck, :players
   attr_writer :winner
 
+  def ask_for_playing(*players)
+    players.each do |player|
+      player.play_turn(self)
+      break if last_man_standing?
+    end
+  end
+
   def detect_winner
     return self.winner = in_contention.first if last_man_standing?
 
     self.winner = winner_by_total
   end
 
-  def display_cards(player)
-    string = "#{player}: #{player.hand} (total: #{player.total})"
-    string += " - busted!" if player.busted?
-    puts string
-  end
-
   def display_outcome
-    clear_screen
-    display_current_state
+    display
     winner ? prompt("#{winner} wins!") : prompt("It's a tie!")
   end
 
   def last_man_standing?
     in_contention.size == 1
+  end
+
+  def players_in_display_order
+    players.sort_by { |player| -player.display_priority }
+  end
+
+  def players_in_move_order
+    players.sort_by { |player| -player.move_sequence }
   end
 
   def winner_by_total
@@ -253,6 +257,13 @@ class Partaker
     hand.busted?
   end
 
+  def display_with_cards
+    puts name + ":", hand
+
+    print "total: #{total}"
+    puts (busted? ? " (busted)" : ""), ""
+  end
+
   def initial_draw
     reset
     raise NotImplementedError,
@@ -261,8 +272,7 @@ class Partaker
 
   def play_turn(game)
     loop do
-      clear_screen
-      game.display_current_state
+      game.display
       make_decision(game)
       break game.mark_as_busted(self) if busted?
       break if staying
@@ -317,6 +327,7 @@ class Dealer < Partaker
   include UX
 
   HITTING_THRESHOLD = 17
+  MOVE_DELAY_SECS   = 1.5
 
   def initial_draw(game)
     game.hit(hand)
@@ -332,13 +343,17 @@ class Dealer < Partaker
     "Dealer"
   end
 
+  def delay_progress
+    sleep MOVE_DELAY_SECS
+  end
+
   def under_hitting_limit?
     total < HITTING_THRESHOLD
   end
 
   def make_decision(game)
     if under_hitting_limit?
-      sleep 1.5 unless hand.size == 1
+      delay_progress unless hand.size == 1
       game.hit(hand)
     else
       stay
