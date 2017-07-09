@@ -107,9 +107,10 @@ class Game
   end
 
   def display_current_state
-    players.each do |player|
-      puts "#{player}: #{player.hand} (total: #{player.total})"
-    end
+    players.sort_by { |player| -player.display_priority }
+           .each do |player|
+             puts "#{player}: #{player.hand} (total: #{player.total})"
+           end
   end
 
   def hit(hand)
@@ -126,7 +127,8 @@ class Game
   end
 
   def play
-    players.each { |player| player.play_turn(self) }
+    players.sort_by { |player| -player.move_sequence  }
+           .each    { |player| player.play_turn(self) }
   end
 
   private
@@ -154,10 +156,12 @@ class Game
 end
 
 class Partaker
-  attr_reader :hand, :name
+  attr_reader :hand, :name, :display_priority, :move_sequence
 
   def initialize
-    @name = assign_name
+    @name             = assign_name
+    @display_priority = assign_display_priority
+    @move_sequence    = assign_move_sequence
     new_hand
   end
 
@@ -196,6 +200,14 @@ class Partaker
   attr_accessor :staying
   attr_writer :hand
 
+  def assign_display_priority
+    0
+  end
+
+  def assign_move_sequence
+    0
+  end
+
   def assign_name
     ""
   end
@@ -224,6 +236,10 @@ class Dealer < Partaker
 
   private
 
+  def assign_display_priority
+    1
+  end
+
   def assign_name
     "Dealer"
   end
@@ -246,6 +262,10 @@ class Player < Partaker
   end
 
   private
+
+  def assign_move_sequence
+    1
+  end
 
   def assign_name
     "Player"
