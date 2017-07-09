@@ -1,3 +1,66 @@
+module UX
+  PROMPT = ">> "
+
+  def clear_screen
+    system("cls") || system("clear")
+  end
+
+  def prompt(*messages)
+    messages.each { |msg| puts PROMPT + msg }
+  end
+end
+
+module UI
+  require 'io/console'
+  include UX
+
+  TERMINATION_CHARS = { "\u0003" => "^C",
+                        "\u0004" => "^D",
+                        "\u001A" => "^Z" }
+
+  def get_char(args)
+    get_input(**args) { yield_char }
+  end
+
+  def get_string(args)
+    get_input(**args) { gets.strip }
+  end
+
+  def wait_for_any_key
+    get_char(message: "Press ANY KEY to continue")
+  end
+
+  private
+
+  def fitting?(expected, input)
+    !expected || expected.include?(input)
+  end
+
+  def get_input(message:, invalid_msg: "Invalid input!", expected: nil)
+    prompt message
+    loop do
+      input = yield
+
+      return input if !input.empty? && fitting?(expected, input)
+
+      prompt invalid_msg
+    end
+  end
+
+  def quit_if_terminating(char_input)
+    termination_input = TERMINATION_CHARS[char_input]
+    abort("Program aborted (#{termination_input})") if termination_input
+  end
+
+  def yield_char
+    char_input = STDIN.getch.downcase
+
+    quit_if_terminating(char_input)
+
+    char_input
+  end
+end
+
 class Deck
   RANKS = %i[j q k a] + (2..10).to_a
   SUITS = %i[c d h s]
@@ -70,6 +133,10 @@ class Hand
     total > BUSTED_THRESHOLD
   end
 
+  def size
+    cards.size
+  end
+
   def to_s
     cards.map(&:to_s).join(" ")
   end
@@ -98,6 +165,8 @@ class Hand
 end
 
 class Game
+  include UX
+
   attr_reader :winner
 
   def initialize(deck, *players)
@@ -108,9 +177,7 @@ class Game
 
   def display_current_state
     players.sort_by { |player| -player.display_priority }
-           .each do |player|
-             puts "#{player}: #{player.hand} (total: #{player.total})"
-           end
+           .each    { |player| display_cards(player)    }
   end
 
   def hit(hand)
@@ -127,8 +194,13 @@ class Game
   end
 
   def play
-    players.sort_by { |player| -player.move_sequence  }
-           .each    { |player| player.play_turn(self) }
+    players.sort_by { |player| -player.move_sequence }
+           .each do |player|
+             player.play_turn(self)
+             break if last_man_standing?
+           end
+    detect_winner
+    display_outcome
   end
 
   private
@@ -141,6 +213,18 @@ class Game
     return self.winner = in_contention.first if last_man_standing?
 
     self.winner = winner_by_total
+  end
+
+  def display_cards(player)
+    string = "#{player}: #{player.hand} (total: #{player.total})"
+    string += " - busted!" if player.busted?
+    puts string
+  end
+
+  def display_outcome
+    clear_screen
+    display_current_state
+    winner ? prompt("#{winner} wins!") : prompt("It's a tie!")
   end
 
   def last_man_standing?
@@ -156,7 +240,7 @@ class Game
 end
 
 class Partaker
-  attr_reader :hand, :name, :display_priority, :move_sequence
+  attr_reader :display_priority, :hand, :move_sequence, :name
 
   def initialize
     @name             = assign_name
@@ -177,8 +261,10 @@ class Partaker
 
   def play_turn(game)
     loop do
+      clear_screen
+      game.display_current_state
       make_decision(game)
-      game.mark_as_busted(self) if busted?
+      break game.mark_as_busted(self) if busted?
       break if staying
     end
   end
@@ -228,6 +314,8 @@ class Partaker
 end
 
 class Dealer < Partaker
+  include UX
+
   HITTING_THRESHOLD = 17
 
   def initial_draw(game)
@@ -244,24 +332,34 @@ class Dealer < Partaker
     "Dealer"
   end
 
-  def limit_reached?
-    total >= HITTING_THRESHOLD
+  def under_hitting_limit?
+    total < HITTING_THRESHOLD
   end
 
   def make_decision(game)
-    game.hit(hand)
-
-    game.hit(hand) until limit_reached?
-    stay
+    if under_hitting_limit?
+      sleep 1.5 unless hand.size == 1
+      game.hit(hand)
+    else
+      stay
+    end
   end
 end
 
 class Player < Partaker
+  include UI, UX
+
   def initial_draw(game)
     2.times { game.hit(hand) }
   end
 
   private
+
+  def ask_about_move
+    get_char(message:     "Please choose: <h>it or <s>tay",
+             invalid_msg: "Please choose \"h\" or \"s\"",
+             expected:    %w[h s])
+  end
 
   def assign_move_sequence
     1
@@ -271,8 +369,7 @@ class Player < Partaker
     "Player"
   end
 
-  def make_decision(game) # temporary implementation
-    game.hit(hand)
-    stay
+  def make_decision(game)
+    ask_about_move == "h" ? game.hit(hand) : stay
   end
 end
