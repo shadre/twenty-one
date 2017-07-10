@@ -5,6 +5,12 @@ module UX
     system("cls") || system("clear")
   end
 
+  def concat_on_both_sides(original, left, right = nil)
+    right ||= left
+
+    left + original + right
+  end
+
   def prompt(*messages)
     messages.each { |msg| puts PROMPT + msg }
   end
@@ -119,7 +125,11 @@ class Card
 end
 
 class Hand
+  include UX
+
   BUSTED_THRESHOLD = 21
+  CARD_WIDTH       = 3
+  CARD_EDGES       = { top: "_", side: "|", bottom: "‾" }
 
   def initialize
     @cards = []
@@ -138,7 +148,7 @@ class Hand
   end
 
   def to_s
-    cards.map(&:to_s).join(" ")
+    all_rows.join("\n")
   end
 
   def total
@@ -155,8 +165,51 @@ class Hand
 
   attr_reader :cards
 
+  def all_rows
+    [top_edges, top_row, middle_row, bottom_row, bottom_edges]
+  end
+
+  def bottom_edges
+    edgize(:bottom)
+  end
+
+  def bottom_row
+    rowize(ranks.map { |rank| rank.to_s.upcase.ljust(CARD_WIDTH) })
+  end
+
+  def edgize(edge)
+    width = CARD_WIDTH
+    cards.map { |_| (CARD_EDGES[edge] * width).center(width + 2) }
+         .join
+  end
+
+  def middle_row
+    rowize(symbols.map { |symbol| symbol.center(CARD_WIDTH) })
+  end
+
   def possible_reductions
     cards.map(&:reduction).select(&:itself)
+  end
+
+  def ranks
+    cards.map(&:rank)
+  end
+
+  def rowize(elements)
+    elements.map { |element| concat_on_both_sides(element, CARD_EDGES[:side]) }
+            .join
+  end
+
+  def symbols
+    cards.map(&:suit_symbol)
+  end
+
+  def top_edges
+    edgize(:top)
+  end
+
+  def top_row
+    rowize(ranks.map { |rank| rank.to_s.upcase.rjust(CARD_WIDTH) })
   end
 
   def unreduced_total
