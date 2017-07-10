@@ -217,7 +217,7 @@ class Hand
   end
 end
 
-class Game
+class TwentyOneGame
   include UX
 
   attr_reader :winner
@@ -341,6 +341,11 @@ class Partaker
     end
   end
 
+  def reset
+    new_hand
+    self.staying = false
+  end
+
   def stay
     self.staying = true
   end
@@ -377,11 +382,6 @@ class Partaker
 
   def new_hand
     self.hand = Hand.new
-  end
-
-  def reset
-    new_hand
-    self.staying = false
   end
 end
 
@@ -450,3 +450,43 @@ class Player < Partaker
     ask_about_move == "h" ? hit(game) : stay
   end
 end
+
+class GameHandler
+  include UI, UX
+
+  def initialize(*players)
+    @players = players
+  end
+
+  def start
+    loop do
+      TwentyOneGame.new(new_deck, *players).play
+      break unless rematch?
+      reset
+    end
+  end
+
+  private
+
+  attr_reader :players
+
+  def ask_about_rematch
+    get_char(message:     "Would you like to play again? (y/n)",
+             expected:    %w[y n],
+             invalid_msg: "Please choose 'y' or 'n'")
+  end
+
+  def new_deck
+    Deck.new
+  end
+
+  def rematch?
+    ask_about_rematch == "y"
+  end
+
+  def reset
+    players.each(&:reset)
+  end
+end
+
+GameHandler.new(Player.new, Dealer.new).start
