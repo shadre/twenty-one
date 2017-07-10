@@ -264,6 +264,10 @@ class Partaker
     puts (busted? ? " (busted)" : ""), ""
   end
 
+  def hit(game)
+    game.hit(hand)
+  end
+
   def initial_draw
     reset
     raise NotImplementedError,
@@ -330,7 +334,7 @@ class Dealer < Partaker
   MOVE_DELAY_SECS   = 1.5
 
   def initial_draw(game)
-    game.hit(hand)
+    hit(game)
   end
 
   private
@@ -354,7 +358,7 @@ class Dealer < Partaker
   def make_decision(game)
     if under_hitting_limit?
       delay_progress unless hand.size == 1
-      game.hit(hand)
+      hit(game)
     else
       stay
     end
@@ -365,7 +369,7 @@ class Player < Partaker
   include UI, UX
 
   def initial_draw(game)
-    2.times { game.hit(hand) }
+    2.times { hit(game) }
   end
 
   private
@@ -385,6 +389,6 @@ class Player < Partaker
   end
 
   def make_decision(game)
-    ask_about_move == "h" ? game.hit(hand) : stay
+    ask_about_move == "h" ? hit(game) : stay
   end
 end
