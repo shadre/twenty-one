@@ -247,6 +247,7 @@ class Game
   end
 
   def play
+    initial_deal
     ask_for_playing(*players_in_move_order)
     detect_winner
     display_outcome
@@ -280,12 +281,16 @@ class Game
     in_contention.size == 1
   end
 
+  def players_in_descending_order_by(criterium)
+    players.sort_by { |player| -player.send(criterium) }
+  end
+
   def players_in_display_order
-    players.sort_by { |player| -player.display_priority }
+    players_in_descending_order_by(:display_priority)
   end
 
   def players_in_move_order
-    players.sort_by { |player| -player.move_sequence }
+    players_in_descending_order_by(:move_sequence)
   end
 
   def winner_by_total
