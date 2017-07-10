@@ -115,10 +115,6 @@ class Card
     SYMBOLS[suit]
   end
 
-  def to_s
-    rank.to_s.upcase + suit_symbol
-  end
-
   def value
     FACE_VALUES[rank] || rank
   end
@@ -220,8 +216,6 @@ end
 class TwentyOneGame
   include UX
 
-  attr_reader :winner
-
   def initialize(deck, *players)
     @deck          = deck
     @players       = players
@@ -249,7 +243,6 @@ class TwentyOneGame
   def play
     initial_deal
     ask_for_playing(*players_in_move_order)
-    detect_winner
     display_outcome
   end
 
@@ -257,7 +250,6 @@ class TwentyOneGame
 
   attr_accessor :in_contention
   attr_reader :deck, :players
-  attr_writer :winner
 
   def ask_for_playing(*players)
     players.each do |player|
@@ -266,10 +258,10 @@ class TwentyOneGame
     end
   end
 
-  def detect_winner
-    return self.winner = in_contention.first if last_man_standing?
+  def winner
+    return in_contention.first if last_man_standing?
 
-    self.winner = winner_by_total
+    winner_by_total
   end
 
   def display_outcome
