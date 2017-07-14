@@ -121,7 +121,7 @@ class Card
 end
 
 class Hand
-  include UX
+  include Comparable, UX
 
   BUSTED_THRESHOLD = 21
   CARD_WIDTH       = 3
@@ -133,6 +133,10 @@ class Hand
 
   def <<(card)
     cards << card
+  end
+
+  def <=>(another)
+    [busted_factor, total] <=> [another.busted_factor, another.total]
   end
 
   def busted?
@@ -155,6 +159,12 @@ class Hand
     end
 
     curr_total
+  end
+
+  protected
+
+  def busted_factor
+    busted? ? 0 : 1
   end
 
   private
@@ -219,7 +229,6 @@ class TwentyOneGame
   def initialize(deck, *players)
     @deck          = deck
     @players       = players
-    @in_contention = players.dup
   end
 
   def display(clear_screen: true)
@@ -236,10 +245,6 @@ class TwentyOneGame
     players.each { |player| player.initial_draw(self) }
   end
 
-  def mark_as_busted(player)
-    in_contention.delete(player)
-  end
-
   def play
     initial_deal
     ask_for_playing(*players_in_move_order)
@@ -248,7 +253,6 @@ class TwentyOneGame
 
   private
 
-  attr_accessor :in_contention
   attr_reader :deck, :players
 
   def ask_for_playing(*players)
@@ -258,19 +262,13 @@ class TwentyOneGame
     end
   end
 
-  def winner
-    return in_contention.first if last_man_standing?
-
-    winner_by_total
-  end
-
   def display_outcome
     display
     winner ? prompt("#{winner} wins!") : prompt("It's a tie!")
   end
 
   def last_man_standing?
-    in_contention.size == 1
+    players.reject(&:busted?).size == 1
   end
 
   def players_in_descending_order_by(criterium)
@@ -285,15 +283,15 @@ class TwentyOneGame
     players_in_descending_order_by(:move_sequence)
   end
 
-  def winner_by_total
-    max_score    = in_contention.map(&:total).max
-    best_players = in_contention.find_all { |player| player.total == max_score }
-
-    best_players.first if best_players.size == 1
+  def winner
+    best = players.max
+    best if best != players.sort[-2]
   end
 end
 
 class Partaker
+  include Comparable
+
   attr_reader :display_priority, :hand, :move_sequence, :name
 
   DISPLAY_PRIORITY = 0
@@ -303,6 +301,10 @@ class Partaker
   def initialize
     setup
     new_hand
+  end
+
+  def <=>(another)
+    hand <=> another.hand
   end
 
   def busted?
@@ -330,8 +332,7 @@ class Partaker
     loop do
       game.display
       make_decision(game)
-      break game.mark_as_busted(self) if busted?
-      break if staying
+      break if busted? || staying
     end
   end
 
@@ -393,10 +394,6 @@ class Dealer < Partaker
     sleep MOVE_DELAY_SECS
   end
 
-  def under_hitting_limit?
-    total < HITTING_THRESHOLD
-  end
-
   def make_decision(game)
     if under_hitting_limit?
       delay_progress unless hand.size == 1
@@ -404,6 +401,10 @@ class Dealer < Partaker
     else
       stay
     end
+  end
+
+  def under_hitting_limit?
+    total < HITTING_THRESHOLD
   end
 end
 
