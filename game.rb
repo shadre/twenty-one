@@ -184,7 +184,7 @@ class Hand
   end
 
   def possible_reductions
-    cards.map(&:reduction).select(&:itself)
+    cards.map(&:reduction).compact
   end
 
   def ranks
@@ -296,10 +296,12 @@ end
 class Partaker
   attr_reader :display_priority, :hand, :move_sequence, :name
 
+  DISPLAY_PRIORITY = 0
+  MOVE_SEQUENCE    = 0
+  NAME             = ""
+
   def initialize
-    @name             = assign_name
-    @display_priority = assign_display_priority
-    @move_sequence    = assign_move_sequence
+    setup
     new_hand
   end
 
@@ -338,6 +340,14 @@ class Partaker
     self.staying = false
   end
 
+  def setup
+    partaker_type = self.class
+
+    @display_priority = partaker_type::DISPLAY_PRIORITY
+    @name             = partaker_type::NAME
+    @move_sequence    = partaker_type::MOVE_SEQUENCE
+  end
+
   def stay
     self.staying = true
   end
@@ -355,18 +365,6 @@ class Partaker
   attr_accessor :staying
   attr_writer :hand
 
-  def assign_display_priority
-    0
-  end
-
-  def assign_move_sequence
-    0
-  end
-
-  def assign_name
-    ""
-  end
-
   def make_decision(_game)
     raise NotImplementedError,
           "method not implemented in #{self.class}"
@@ -380,22 +378,16 @@ end
 class Dealer < Partaker
   include UX
 
+  DISPLAY_PRIORITY  = 1
   HITTING_THRESHOLD = 17
   MOVE_DELAY_SECS   = 1.5
+  NAME              = "Dealer"
 
   def initial_draw(game)
     hit(game)
   end
 
   private
-
-  def assign_display_priority
-    1
-  end
-
-  def assign_name
-    "Dealer"
-  end
 
   def delay_progress
     sleep MOVE_DELAY_SECS
@@ -418,6 +410,9 @@ end
 class Player < Partaker
   include UI, UX
 
+  MOVE_SEQUENCE = 1
+  NAME          = "Player"
+
   def initial_draw(game)
     2.times { hit(game) }
   end
@@ -428,14 +423,6 @@ class Player < Partaker
     get_char(message:     "Please choose: <h>it or <s>tay",
              invalid_msg: "Please choose \"h\" or \"s\"",
              expected:    %w[h s])
-  end
-
-  def assign_move_sequence
-    1
-  end
-
-  def assign_name
-    "Player"
   end
 
   def make_decision(game)
