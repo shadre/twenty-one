@@ -283,9 +283,13 @@ class TwentyOneGame
     players_in_descending_order_by(:move_sequence)
   end
 
+  def runner_up
+    players.sort[-2]
+  end
+
   def winner
     best = players.max
-    best if best != players.sort[-2]
+    best if best != runner_up
   end
 end
 
